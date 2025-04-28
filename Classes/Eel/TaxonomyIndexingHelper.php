@@ -14,9 +14,11 @@ class TaxonomyIndexingHelper implements ProtectedContextAwareInterface
      * @Flow\Inject
      */
     protected $taxonomyService;
+    #[\Neos\Flow\Annotations\Inject]
+    protected \Neos\ContentRepositoryRegistry\ContentRepositoryRegistry $contentRepositoryRegistry;
 
     /**
-     * @param NodeInterface|NodeInterface[] $taxonomies
+     * @param \Neos\ContentRepository\Core\Projection\ContentGraph\Node|\Neos\ContentRepository\Core\Projection\ContentGraph\Node[] $taxonomies
      * @return array
      */
     public function extractIdentifierAndParentIdentifiers($taxonomies)
@@ -26,7 +28,7 @@ class TaxonomyIndexingHelper implements ProtectedContextAwareInterface
             return [];
         }
 
-        if ($taxonomies instanceof NodeInterface) {
+        if ($taxonomies instanceof \Neos\ContentRepository\Core\Projection\ContentGraph\Node) {
             $taxonomies = [$taxonomies];
         }
 
@@ -34,14 +36,18 @@ class TaxonomyIndexingHelper implements ProtectedContextAwareInterface
         $taxonomyNodeType = $this->taxonomyService->getTaxonomyNodeType();
 
         foreach ($taxonomies as $taxonomy) {
-            if (($taxonomy instanceof NodeInterface) && $taxonomy->getNodeType()->isOfType($taxonomyNodeType)) {
-                $identifier = (string) $taxonomy->getNodeAggregateIdentifier();
+            $contentRepository = $this->contentRepositoryRegistry->get($taxonomy->contentRepositoryId);
+            if (($taxonomy instanceof \Neos\ContentRepository\Core\Projection\ContentGraph\Node) && $contentRepository->getNodeTypeManager()->getNodeType($taxonomy->nodeTypeName)->isOfType($taxonomyNodeType)) {
+                $identifier = $taxonomy->aggregateId->value;
                 $identifiers[$identifier] = $identifier;
-                $parent = $taxonomy->getParent();
-                while ($parent && ($parent instanceof NodeInterface) && $parent->getNodeType()->isOfType($taxonomyNodeType)) {
-                    $identifier = (string) $parent->getNodeAggregateIdentifier();
+                $subgraph = $this->contentRepositoryRegistry->subgraphForNode($taxonomy);
+                $parent = $subgraph->findParentNode($taxonomy->aggregateId);
+                $contentRepository = $this->contentRepositoryRegistry->get($parent->contentRepositoryId);
+                while ($parent && ($parent instanceof \Neos\ContentRepository\Core\Projection\ContentGraph\Node) && $contentRepository->getNodeTypeManager()->getNodeType($parent->nodeTypeName)->isOfType($taxonomyNodeType)) {
+                    $identifier = $parent->aggregateId->value;
                     $identifiers[$identifier] = $identifier;
-                    $parent = $parent->getParent();
+                    $subgraph = $this->contentRepositoryRegistry->subgraphForNode($parent);
+                    $parent = $subgraph->findParentNode($parent->aggregateId);
                 }
             }
         }
