@@ -2,7 +2,6 @@
 namespace Sitegeist\Taxonomy\ElasticSearch\Eel;
 
 use Neos\Flow\Annotations as Flow;
-use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Sitegeist\Taxonomy\Service\TaxonomyService;
 use Neos\Eel\ProtectedContextAwareInterface;
 
